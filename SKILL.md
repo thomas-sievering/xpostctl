@@ -9,7 +9,7 @@ allowed-tools: Read, Bash
 
 # xpostctl Skill
 
-Agent workflow for using `xpostctl` to manage X/Twitter content.
+Agent workflow for using `./xpostctl.exe` to manage X/Twitter content.
 
 ## Arguments
 
@@ -29,29 +29,29 @@ If mode is missing, infer from user request:
 ## Examples
 
 - User says: "draft this tweet: shipping beats polish"
-  - Run: `xpostctl draft "shipping beats polish"`
+  - Run: `./xpostctl.exe draft "shipping beats polish"`
 - User says: "generate thread about bun vs node"
-  - Run: `xpostctl generate thread "bun vs node"`
+  - Run: `./xpostctl.exe generate thread "bun vs node"`
 - User says: "post a1b2c3 dry run"
-  - Run: `xpostctl post a1b2c3 --dry`
+  - Run: `./xpostctl.exe post a1b2c3 --dry`
 - User says: "list my drafts"
-  - Run: `xpostctl list drafts --json`
+  - Run: `./xpostctl.exe list drafts --json`
 
 ## Steps
 
 ### 1) Create or generate draft(s)
 
 ```powershell
-xpostctl draft "My first tweet"
-xpostctl generate "bun runtime"
-xpostctl generate thread "why fast feedback loops win"
+./xpostctl.exe draft "My first tweet"
+./xpostctl.exe generate "bun runtime"
+./xpostctl.exe generate thread "why fast feedback loops win"
 ```
 
 ### 2) Review
 
 ```powershell
-xpostctl list drafts --json
-xpostctl get <id> --json
+./xpostctl.exe list drafts --json
+./xpostctl.exe get <id> --json
 ```
 
 If JSON needs to be human-inspectable while debugging:
@@ -63,25 +63,27 @@ $env:XPOSTCTL_JSON_PRETTY = "1"
 ### 3) Post
 
 ```powershell
-xpostctl post <id> --dry
-xpostctl post <id>
+./xpostctl.exe post <id> --dry
+./xpostctl.exe post <id>
 ```
 
 ### 4) Delete
 
 ```powershell
-xpostctl delete <id> --dry
-xpostctl delete <id>
+./xpostctl.exe delete <id> --dry
+./xpostctl.exe delete <id>
 ```
 
 Storage path note:
 
 - Use `XPOSTCTL_DATA_DIR` to force a workspace-local or custom store path.
-- Without override, `xpostctl` uses legacy `.twitter/` if present, otherwise OS config storage.
+- Without override, `./xpostctl.exe` uses legacy `.twitter/` if present, otherwise OS config storage.
 
 ## Error Handling
 
-- If command returns `NOT_FOUND`, confirm id with `xpostctl list --json`.
+- If command returns `NOT_FOUND`, confirm id with `./xpostctl.exe list --json`.
 - If command returns `INVALID_ARGS`, retry with required positional args.
 - If posting fails, do not retry blindly; show exact API error first.
 - For high-impact actions (`post`, non-dry `delete`), echo target id before execution.
+
+
