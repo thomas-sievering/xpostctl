@@ -1,6 +1,10 @@
 .twitter/
 node_modules/
 *.log
+*.exe
+*.out
+dist/
+build/
 .env
 .env.local
 .env.*
