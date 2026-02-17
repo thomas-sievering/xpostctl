@@ -1,0 +1,12 @@
+.twitter/
+node_modules/
+*.log
+.env
+.env.local
+.env.*
+!.env.example
+x.env
+x.env.local
+x.env.*
+.envs/
+!.envs/*.example
