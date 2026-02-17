@@ -11,10 +11,19 @@ func withTempCwd(t *testing.T, fn func()) {
 	t.Helper()
 	wd, _ := os.Getwd()
 	dir := t.TempDir()
+	prevDataDir := os.Getenv("XPOSTCTL_DATA_DIR")
+	_ = os.Setenv("XPOSTCTL_DATA_DIR", filepath.Join(dir, ".twitter"))
 	if err := os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.Chdir(wd) }()
+	defer func() {
+		_ = os.Chdir(wd)
+		if prevDataDir == "" {
+			_ = os.Unsetenv("XPOSTCTL_DATA_DIR")
+		} else {
+			_ = os.Setenv("XPOSTCTL_DATA_DIR", prevDataDir)
+		}
+	}()
 	fn()
 }
 

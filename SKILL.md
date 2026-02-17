@@ -54,6 +54,12 @@ xpostctl list drafts --json
 xpostctl get <id> --json
 ```
 
+If JSON needs to be human-inspectable while debugging:
+
+```powershell
+$env:XPOSTCTL_JSON_PRETTY = "1"
+```
+
 ### 3) Post
 
 ```powershell
@@ -67,6 +73,11 @@ xpostctl post <id>
 xpostctl delete <id> --dry
 xpostctl delete <id>
 ```
+
+Storage path note:
+
+- Use `XPOSTCTL_DATA_DIR` to force a workspace-local or custom store path.
+- Without override, `xpostctl` uses legacy `.twitter/` if present, otherwise OS config storage.
 
 ## Error Handling
 

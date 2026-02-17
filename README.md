@@ -27,10 +27,17 @@ Global flag:
 
 - Success: `{"ok":true,"data":...}`
 - Error: `{"ok":false,"error":{"code":"...","message":"...","details":...}}`
+- Set `XPOSTCTL_JSON_PRETTY=1` for indented output.
 
 ## Configuration
 
-Data directory: `.twitter/`
+Data directory resolution:
+
+1. `XPOSTCTL_DATA_DIR` (if set)
+2. local `.twitter/` (legacy compatibility if present)
+3. OS user config dir (`%APPDATA%/xpostctl` on Windows, `~/.config/xpostctl` on Linux/macOS)
+
+Stored files:
 
 - `config.json` - Twitter + AI defaults
 - `tweets.json` - local tweet store

@@ -28,6 +28,8 @@ const (
 
 var version = "dev"
 
+const defaultHTTPTimeout = 30 * time.Second
+
 type Ctx struct{ JSON bool }
 
 type CliErr struct {
@@ -91,12 +93,33 @@ func cwd() string {
 	}
 	return d
 }
-func dataDir() string    { return filepath.Join(cwd(), ".twitter") }
+
+func legacyDataDir() string { return filepath.Join(cwd(), ".twitter") }
+
+func defaultDataDir() string {
+	root, err := os.UserConfigDir()
+	if err != nil || strings.TrimSpace(root) == "" {
+		return legacyDataDir()
+	}
+	return filepath.Join(root, "xpostctl")
+}
+
+func dataDir() string {
+	if p := strings.TrimSpace(os.Getenv("XPOSTCTL_DATA_DIR")); p != "" {
+		return p
+	}
+	legacy := legacyDataDir()
+	if _, err := os.Stat(legacy); err == nil {
+		return legacy
+	}
+	return defaultDataDir()
+}
+
 func tweetsPath() string { return filepath.Join(dataDir(), "tweets.json") }
 func gensPath() string   { return filepath.Join(dataDir(), "generations.json") }
 func cfgPath() string    { return filepath.Join(dataDir(), "config.json") }
 
-func ensureData() error { return os.MkdirAll(dataDir(), 0o755) }
+func ensureData() error { return os.MkdirAll(dataDir(), 0o700) }
 
 func readJSON[T any](path string, fallback T) (T, error) {
 	raw, err := os.ReadFile(path)
@@ -122,7 +145,7 @@ func writeJSON(path string, v any) error {
 		return err
 	}
 	raw = append(raw, '\n')
-	return os.WriteFile(path, raw, 0o644)
+	return os.WriteFile(path, raw, 0o600)
 }
 
 func listTweets(status string) ([]Tweet, error) {
@@ -384,6 +407,9 @@ type twClient struct {
 	dry   bool
 	quiet bool
 }
+
+var xHTTPClient = &http.Client{Timeout: defaultHTTPTimeout}
+
 type postResult struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
@@ -408,7 +434,7 @@ func (c twClient) post(text string, replyTo *string) (postResult, error) {
 	}
 	req.Header.Set("Authorization", sign("POST", u, c.creds, nil, "", ""))
 	req.Header.Set("Content-Type", "application/json")
-	res, err := http.DefaultClient.Do(req)
+	res, err := xHTTPClient.Do(req)
 	if err != nil {
 		return postResult{}, err
 	}
@@ -439,7 +465,7 @@ func (c twClient) del(tweetID string) error {
 		return err
 	}
 	req.Header.Set("Authorization", sign("DELETE", u, c.creds, nil, "", ""))
-	res, err := http.DefaultClient.Do(req)
+	res, err := xHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -829,16 +855,34 @@ func help() {
 	fmt.Println("  xpostctl - X Posting Toolkit")
 	fmt.Println()
 	for _, c := range []string{"draft", "generate", "post", "list", "get", "delete"} {
-		fmt.Printf("  tweet %-20s %s\n", c, cmdHelp[c])
+		fmt.Printf("  xpostctl %-17s %s\n", c, cmdHelp[c])
 	}
 	fmt.Println("\n  Global flags:\n    --json   machine-readable output")
 	fmt.Println("\n  Examples:")
-	fmt.Println("    tweet draft \"My first tweet\"")
-	fmt.Println("    tweet generate \"bun runtime\"")
-	fmt.Println("    tweet list drafts --json")
-	fmt.Println("    tweet post abc123 --dry")
-	fmt.Println("    tweet get abc123 --json")
+	fmt.Println("    xpostctl draft \"My first tweet\"")
+	fmt.Println("    xpostctl generate \"bun runtime\"")
+	fmt.Println("    xpostctl list drafts --json")
+	fmt.Println("    xpostctl post abc123 --dry")
+	fmt.Println("    xpostctl get abc123 --json")
 	fmt.Println()
+}
+
+func emitJSON(v any) error {
+	pretty := strings.TrimSpace(os.Getenv("XPOSTCTL_JSON_PRETTY")) == "1"
+	var (
+		b   []byte
+		err error
+	)
+	if pretty {
+		b, err = json.MarshalIndent(v, "", "  ")
+	} else {
+		b, err = json.Marshal(v)
+	}
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+	return nil
 }
 
 func parseArgs(argv []string) (string, []string, Ctx) {
@@ -880,7 +924,7 @@ func main() {
 	cmd, args, ctx := parseArgs(os.Args[1:])
 	if cmd == "" || cmd == "help" || cmd == "--help" {
 		if ctx.JSON {
-			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": true, "data": map[string]any{"commands": cmdHelp}})
+			_ = emitJSON(map[string]any{"ok": true, "data": map[string]any{"commands": cmdHelp}})
 		} else {
 			help()
 		}
@@ -891,7 +935,7 @@ func main() {
 		if ce, ok := err.(*CliErr); ok {
 			payload := map[string]any{"ok": false, "error": map[string]any{"code": ce.Code, "message": ce.Msg, "details": ce.Details}}
 			if ctx.JSON {
-				_ = json.NewEncoder(os.Stdout).Encode(payload)
+				_ = emitJSON(payload)
 			} else {
 				fmt.Fprintln(os.Stderr, "Error:", ce.Msg)
 			}
@@ -899,13 +943,13 @@ func main() {
 		}
 		payload := map[string]any{"ok": false, "error": map[string]any{"code": "FATAL", "message": err.Error()}}
 		if ctx.JSON {
-			_ = json.NewEncoder(os.Stdout).Encode(payload)
+			_ = emitJSON(payload)
 		} else {
 			fmt.Fprintln(os.Stderr, "Fatal:", err.Error())
 		}
 		os.Exit(1)
 	}
 	if ctx.JSON {
-		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": true, "data": data})
+		_ = emitJSON(map[string]any{"ok": true, "data": data})
 	}
 }
